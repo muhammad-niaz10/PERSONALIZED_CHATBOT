@@ -1,34 +1,24 @@
-from fastapi import APIRouter,HTTPException,Depends
-from app.schemas import LoginUser
-from app.database import session,get_db
-from sqlalchemy.orm import Session
-from app.auth import verify_password,token
-from datetime import datetime, timedelta
-from app.models import Users
+import streamlit as st
+from api import login
 
-login_router = APIRouter()
+def login_page():
 
-@login_router.post("/login")
-def login(data:LoginUser,db:Session=Depends(get_db)):
+    st.subheader("Login")
 
-    user = db.query(Users).filter(Users.email == data.email).first()
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
 
-    if not user:
-        raise HTTPException(status_code=400,detail="invalid credentials")
+    if st.button("Login"):
 
-    if not verify_password(data.password,user.hashed_password): 
-        raise HTTPException(status_code=400,detail="invalid credentials")
+        res = login(email, password)
 
-    expire_time = datetime.utcnow() + timedelta(hours=1)
+        if res.status_code == 200:
 
+            token = res.json()["access_token"]
 
-    payload = {
-        "sub": str(user.id),
-        "exp": expire_time
-    }
-    generate_token = token(payload)
+            st.session_state.token = token
 
-    return {"access_token": generate_token, "token_type": "bearer"}
+            st.success("Login Successful")
 
-
-    
+        else:
+            st.error("Invalid Credentials")
